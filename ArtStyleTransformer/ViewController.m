@@ -11,11 +11,13 @@
 #import "rain_princess.h"
 #import "udnie.h"
 #import "wave.h"
+#import "StyleTransfer.h"
 #import <CoreML/CoreML.h>
 #import <Vision/Vision.h>
 #import <UIKit/UIKit.h>
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <Photos/Photos.h>
+
 #define WeakSelf __weak typeof(self) weakSelf = self;
 
 @interface ViewController ()
@@ -30,7 +32,7 @@
     
     
     UIImage *image=[UIImage imageNamed:@"imgtest.jpeg"];
-    [self changeImage:image toStyle:1];
+    [self changeImage:image toStyle:4];
     
 }
 
@@ -41,7 +43,7 @@
 -(void)changeImage:(UIImage *)image toStyle:(int)style{
     CGSize osize = image.size;
     CVPixelBufferRef img = [self scaleToSize:image size:CGSizeMake(883, 720)];
-    
+    CVPixelBufferRef img2 = [self scaleToSize:image size:CGSizeMake(256, 256)];
 
     
     
@@ -70,7 +72,7 @@
         rain_princessOutput *output2 = [model predictionFromImg_placeholder__0:img error:nil];
         
         
-        UIImage *resultImage = [self imageFromPixelBuffer:output.add_37__0];
+        UIImage *resultImage = [self convert:output2.add_37__0];
         UIImageView *imgView = [[UIImageView alloc]initWithImage:resultImage];
         imgView.frame=CGRectMake(10, 10, osize.width, osize.height);
         [self.view addSubview:imgView];
@@ -83,6 +85,26 @@
         wave *model = [[wave alloc]init];
         vnCoreMMModel = [VNCoreMLModel modelForMLModel:model.model error:&error];
 
+    }
+    if(style == 4){
+        StyleTransfer *model = [[StyleTransfer alloc]init];
+        MLMultiArray *styleArray = [[MLMultiArray alloc]initWithShape:@[@3] dataType:MLMultiArrayDataTypeDouble error:nil];
+        
+        for (int i = 0; i<styleArray.count; i++) {
+            styleArray[i]=@0.0;
+            
+        }
+        styleArray[0]=@1.0;
+        StyleTransferOutput *output = [model predictionFromImage:img2 index:styleArray error:nil];
+        
+        UIImage *resultImage = [self imageFromPixelBuffer:output.stylizedImage];
+        UIImageView *imgView = [[UIImageView alloc]initWithImage:resultImage];
+        imgView.frame=CGRectMake(10, 10, osize.width, osize.height);
+        [self.view addSubview:imgView];
+        
+        
+        
+        
     }
 
     
@@ -265,7 +287,26 @@
 
 
 - (UIImage *)imageFromPixelBuffer:(CVPixelBufferRef)pixelBufferRef {
-    CVImageBufferRef imageBuffer =  pixelBufferRef;
+    
+    CGImageRef img = NULL;
+    
+
+//    VTCreateCGImageFromCVPixelBuffer(pixelBufferRef, nil, img);
+//    UIImage *image = [UIImage imageWithCGImage:img];
+//    CGImageRelease(img);
+//    size_t bufferSize = CVPixelBufferGetDataSize(pixelBufferRef);
+//    size_t bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(pixelBufferRef, 0);
+//    CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
+//    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, baseAddress, bufferSize, NULL);
+//    CGDataProviderRelease(provider);
+//    CGColorSpaceRelease(rgbColorSpace);
+//    CVPixelBufferUnlockBaseAddress(pixelBufferRef, 0);
+//    return image;
+    
+    
+    CVPixelBufferRef imageBuffer =  pixelBufferRef;
+    
+
     size_t width = CVPixelBufferGetWidth(imageBuffer);
     size_t height = CVPixelBufferGetHeight(imageBuffer);
     
