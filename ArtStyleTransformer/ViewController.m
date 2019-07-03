@@ -67,7 +67,10 @@
         
         rain_princessOutput *output =[model predictionFromFeatures:input error:nil];
         
-        UIImage *resultImage = [self imageFromPixelBuffer:[output featureValueForName:@"add_37__0"].imageBufferValue];
+        rain_princessOutput *output2 = [model predictionFromImg_placeholder__0:img error:nil];
+        
+        
+        UIImage *resultImage = [self imageFromPixelBuffer:output.add_37__0];
         UIImageView *imgView = [[UIImageView alloc]initWithImage:resultImage];
         imgView.frame=CGRectMake(10, 10, osize.width, osize.height);
         [self.view addSubview:imgView];
@@ -118,54 +121,7 @@
     
 
     
-    //改变图片的size
-- (CVPixelBufferRef)scaleToSize:(UIImage *)img size:(CGSize)size{
-    // 创建一个bitmap的context
-    // 并把它设置成为当前正在使用的context
-    UIGraphicsBeginImageContext(size);
-    // 绘制改变大小的图片
-    [img drawInRect:CGRectMake(0, 0, size.width, size.height)];
-    // 从当前context中创建一个改变大小后的图片
-    UIImage* scaledImage = UIGraphicsGetImageFromCurrentImageContext();
-    // 使当前的context出堆栈
-    UIGraphicsEndImageContext();
-    // 返回新的改变大小后的图片
-    
-    return [self makePixelBufferFromCGImage:scaledImage.CGImage];
-    //return scaledImage;
-    
-    
-}
-    
-    
-    
-    
-    
-    
-    
-- (UIImage *)imageFromPixelBuffer:(CVPixelBufferRef)pixelBufferRef {
-    CVImageBufferRef imageBuffer =  pixelBufferRef;
-    size_t width = CVPixelBufferGetWidth(imageBuffer);
-    size_t height = CVPixelBufferGetHeight(imageBuffer);
-    
-    
-    CVPixelBufferLockBaseAddress(imageBuffer, 0);
-    void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
-    
-    size_t bufferSize = CVPixelBufferGetDataSize(imageBuffer);
-    size_t bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(imageBuffer, 0);
-    
-    CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
-    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, baseAddress, bufferSize, NULL);
-    
-    CGImageRef cgImage = CGImageCreate(width, height, 8, 32, bytesPerRow, rgbColorSpace, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrderDefault, provider, NULL, true, kCGRenderingIntentDefault);
-    UIImage *image = [UIImage imageWithCGImage:cgImage];
-    CGImageRelease(cgImage);
-    CGDataProviderRelease(provider);
-    CGColorSpaceRelease(rgbColorSpace);
-    CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
-    return image;
-}
+
     
     
     
@@ -196,11 +152,6 @@
     
     
 -(CVPixelBufferRef)makePixelBufferFromCGImage:(CGImageRef)cgImage{
-    NSDictionary *options = @{
-                              (NSString*)kCVPixelBufferCGImageCompatibilityKey : @YES,
-                              (NSString*)kCVPixelBufferCGBitmapContextCompatibilityKey : @YES,
-                              (NSString*)kCVPixelBufferIOSurfacePropertiesKey: [NSDictionary dictionary]
-                              };
     CVPixelBufferRef pxbuffer = NULL;
     CGFloat frameWidth = CGImageGetWidth(cgImage);
     CGFloat frameHeight = CGImageGetHeight(cgImage);
@@ -216,14 +167,16 @@
         NSLog(@"Cannot create pixel buffer for image");
     }
 
-    CVPixelBufferLockBaseAddress(pxbuffer, 0);
+    CVPixelBufferLockBaseAddress(pxbuffer, 1);
     void *data = CVPixelBufferGetBaseAddress(pxbuffer);
     CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
 
     
     CGBitmapInfo bitmapInfo = kCGBitmapByteOrder32Little|kCGImageAlphaFirst;
 
+
     
+//    let context = CGContext(data: data, width: width, height: height, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!), space: rgbColorSpace, bitmapInfo: bitmapInfo.rawValue)
     CGContextRef context = CGBitmapContextCreate(data,
                                                  frameWidth,
                                                  frameHeight,
@@ -234,7 +187,7 @@
 
     //NSParameterAssert(context);
     CGContextDrawImage(context, CGRectMake(0, 0, frameWidth, frameHeight), cgImage);
-    CVPixelBufferUnlockBaseAddress(pxbuffer, 0);
+    CVPixelBufferUnlockBaseAddress(pxbuffer, 1);
     CGColorSpaceRelease(rgbColorSpace);
     CGContextRelease(context);
     return pxbuffer;
@@ -244,10 +197,96 @@
 
 
     
+
+- (CVPixelBufferRef)pixelBufferFromCGImage:(CGImageRef)image
+{
+    CGSize frameSize = CGSizeMake(CGImageGetWidth(image), CGImageGetHeight(image));
+    NSDictionary *options = @{
+                              (__bridge NSString *)kCVPixelBufferCGImageCompatibilityKey: @(NO),
+                              (__bridge NSString *)kCVPixelBufferCGBitmapContextCompatibilityKey: @(NO)
+                              };
+    CVPixelBufferRef pixelBuffer;
+    CVReturn status = CVPixelBufferCreate(kCFAllocatorDefault, frameSize.width,
+                                          frameSize.height,  kCVPixelFormatType_32ARGB, (__bridge CFDictionaryRef) options,
+                                          &pixelBuffer);
+    if (status != kCVReturnSuccess) {
+        return NULL;
+    }
+    
+    CVPixelBufferLockBaseAddress(pixelBuffer, 0);
+    void *data = CVPixelBufferGetBaseAddress(pixelBuffer);
+    CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(data, frameSize.width, frameSize.height,
+                                                 8, CVPixelBufferGetBytesPerRow(pixelBuffer), rgbColorSpace,
+                                                 (CGBitmapInfo) kCGImageAlphaNoneSkipFirst);
+    CGContextDrawImage(context, CGRectMake(0, 0, CGImageGetWidth(image),
+                                           CGImageGetHeight(image)), image);
+    CGColorSpaceRelease(rgbColorSpace);
+    CGContextRelease(context);
+    CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+    
+    return pixelBuffer;
+}
+
+
+
+
+
+
+
+
+
+
     
     
+//改变图片的size
+- (CVPixelBufferRef)scaleToSize:(UIImage *)img size:(CGSize)size{
+    // 创建一个bitmap的context
+    // 并把它设置成为当前正在使用的context
+    UIGraphicsBeginImageContext(size);
+    // 绘制改变大小的图片
+    [img drawInRect:CGRectMake(0, 0, size.width, size.height)];
+    // 从当前context中创建一个改变大小后的图片
+    UIImage* scaledImage = UIGraphicsGetImageFromCurrentImageContext();
+    // 使当前的context出堆栈
+    UIGraphicsEndImageContext();
+    // 返回新的改变大小后的图片
+    
+    return [self pixelBufferFromCGImage:scaledImage.CGImage];
+    //return scaledImage;
     
     
+}
+
+
+
+
+
+
+
+- (UIImage *)imageFromPixelBuffer:(CVPixelBufferRef)pixelBufferRef {
+    CVImageBufferRef imageBuffer =  pixelBufferRef;
+    size_t width = CVPixelBufferGetWidth(imageBuffer);
+    size_t height = CVPixelBufferGetHeight(imageBuffer);
+    
+    
+    CVPixelBufferLockBaseAddress(imageBuffer, 0);
+    void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
+    
+    size_t bufferSize = CVPixelBufferGetDataSize(imageBuffer);
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(imageBuffer, 0);
+    
+    CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
+    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, baseAddress, bufferSize, NULL);
+    
+    CGImageRef cgImage = CGImageCreate(width, height, 8, 32, bytesPerRow, rgbColorSpace, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrderDefault, provider, NULL, true, kCGRenderingIntentDefault);
+    UIImage *image = [UIImage imageWithCGImage:cgImage];
+    CGImageRelease(cgImage);
+    CGDataProviderRelease(provider);
+    CGColorSpaceRelease(rgbColorSpace);
+    CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
+    return image;
+}
     
     
     
