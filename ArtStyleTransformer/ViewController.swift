@@ -8,7 +8,7 @@
 
 import UIKit
 import CoreML
-
+import VideoToolbox
 
 
 class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource {
@@ -18,8 +18,8 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
     
     @IBOutlet weak var imgView: UIImageView!
     @IBOutlet weak var tableView: UITableView!
-    
-    
+    var numberOfStyles:Int = 0
+    private var myStyleTransfer:StyleTransfer! = StyleTransfer()
 
     private let models = [
         wave().model,
@@ -35,18 +35,22 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
 
         self.tableView.delegate=self
         self.tableView.dataSource=self
-        self.styleButtonTouched(style: 3)
+        if let metadata = self.myStyleTransfer.model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: Any] {
+            if let styles = metadata["num_styles"] as? String {
+                self.numberOfStyles = Int(styles) ?? 0
+            }
+        }
     }
 
 
-    private func styleButtonTouched(style: Int) {
+    private func styleButtonTouched(style: Int , size:CGSize) {
         let image = self.imgTest?.cgImage
     
         let model = models[style]
     
 
         DispatchQueue.global(qos: .userInteractive).async {
-            let stylized = self.stylizeImage(cgImage: image!, model: model, size: CGSize(width:883,height:720))
+            let stylized = self.stylizeImage(cgImage: image!, model: model, size: CGSize(width:size.width,height:size.height))
     
             DispatchQueue.main.async {
                 let resultImage = UIImage(cgImage: stylized)
@@ -114,7 +118,7 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 5
+        return 4+numberOfStyles+1
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -141,9 +145,25 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
             cell?.textLabel?.text = "la_muse style"
             break
         case 4:
-            cell?.textLabel?.text = "other style"
+            cell?.textLabel?.text = "other style 1"
+            break
+        case 5:
+            cell?.textLabel?.text = "other style 2"
+            break
+        case 6:
+            cell?.textLabel?.text = "other style 3"
+            break
+        case 7:
+            cell?.textLabel?.text = "other style 4"
             break
         default:
+            if indexPath.row<(4+self.numberOfStyles){
+                cell?.textLabel?.text = NSString.init(format: "other style %d", indexPath.row-3) as String
+                break
+            }
+            
+            
+            cell?.textLabel?.text = "normal style"
             break
         }
         
@@ -155,12 +175,54 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
         if indexPath.row<4 {
-            self.styleButtonTouched(style: indexPath.row)
+            self.styleButtonTouched(style: indexPath.row , size: CGSize(width: 883, height: 720))
         }
         else{
-            self.imgView.image=self.imgTest
+
+                if indexPath.row<(4+self.numberOfStyles){
+                    self.transferStyle(image: self.imgTest!, styleIndex: indexPath.row-4)
+                    return
+                }
+                self.imgView.image=self.imgTest
+            
+            
         }
+
+        
         
     }
+    
+    
+    
+    
+    func transferStyle(image: UIImage, styleIndex: Int) {
+        
+        let styleArray = try? MLMultiArray(shape: [self.numberOfStyles] as [NSNumber], dataType: MLMultiArrayDataType.double)
+        
+        for i in 0...((styleArray?.count)!-1) {
+            styleArray?[i] = 0.0
+        }
+        styleArray?[styleIndex] = 1.0
+        let img = image.cgImage
+        //var buffer =  pixelBuffer(cgImage: img!, width: Int(225), height: Int(225))
+        
+        let pixelBuffer = self.pixelBuffer(cgImage: img!, width: Int(image.size.width), height: Int(image.size.height))
+            do {
+                let predictionOutput = try self.myStyleTransfer.prediction(image: pixelBuffer, index: styleArray!)
+                
+                
+                var cgImage: CGImage?
+                VTCreateCGImageFromCVPixelBuffer(predictionOutput.stylizedImage, options: nil, imageOut: &cgImage)
+                var image = UIImage.init(cgImage: cgImage!)
+                
+                self.imgView.image = image
+                
+            } catch let error as NSError {
+                print("CoreML Model Error: \(error)")
+            }
+        
+    }
+    
+    
 }
 
