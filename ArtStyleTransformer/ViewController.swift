@@ -12,7 +12,8 @@ import CoreML
 
 
 class ViewController: UIViewController {
-    private var imgTest = UIImage(named: "imgtest.jpeg")
+    public var imgTest = UIImage(named: "imgtest.jpeg")
+    private var imgView = UIImageView.init()
     private let models = [
         wave().model,
         udnie().model,
@@ -24,16 +25,20 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        self.imgView = UIImageView(image: self.imgTest)
         
+        let screenSize = UIScreen.main.bounds.size
+        self.imgView.frame=CGRect(origin: CGPoint(x:0,y:100), size: CGSize(width: screenSize.width, height: 300))
+        self.view.addSubview(self.imgView)
         
-        self.styleButtonTouched()
+        self.styleButtonTouched(style: 3)
     }
 
 
-    private func styleButtonTouched() {
+    private func styleButtonTouched(style: Int) {
         let image = self.imgTest?.cgImage
     
-        let model = models[1]
+        let model = models[style]
     
 
         DispatchQueue.global(qos: .userInteractive).async {
@@ -41,9 +46,11 @@ class ViewController: UIViewController {
     
             DispatchQueue.main.async {
                 let resultImage = UIImage(cgImage: stylized)
-                let imageview = UIImageView(image: resultImage)
-                imageview.frame=CGRect(origin: CGPoint(x:0,y:100), size: CGSize(width:375,height:300))
-                self.view.addSubview(imageview)
+//                let imageview = UIImageView(image: resultImage)
+//                imageview.frame=CGRect(origin: CGPoint(x:0,y:100), size: CGSize(width:375,height:300))
+//                self.view.addSubview(imageview)
+                
+                self.imgView.image=resultImage
             }
         }
     }
