@@ -11,9 +11,16 @@ import CoreML
 
 
 
-class ViewController: UIViewController {
+class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource {
+    
+    
     public var imgTest = UIImage(named: "imgtest.jpeg")
-    private var imgView = UIImageView.init()
+    
+    @IBOutlet weak var imgView: UIImageView!
+    @IBOutlet weak var tableView: UITableView!
+    
+    
+
     private let models = [
         wave().model,
         udnie().model,
@@ -25,12 +32,9 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.imgView = UIImageView(image: self.imgTest)
-        
-        let screenSize = UIScreen.main.bounds.size
-        self.imgView.frame=CGRect(origin: CGPoint(x:0,y:100), size: CGSize(width: screenSize.width, height: 300))
-        self.view.addSubview(self.imgView)
-        
+
+        self.tableView.delegate=self
+        self.tableView.dataSource=self
         self.styleButtonTouched(style: 3)
     }
 
@@ -101,6 +105,62 @@ class ViewController: UIViewController {
         CVPixelBufferUnlockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
         
         return pixelBuffer!
+    }
+    
+    
+    
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return 1
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return 5
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 50
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cellid = "modelSelectCell"
+        var cell = tableView.dequeueReusableCell(withIdentifier: cellid)
+        if cell==nil {
+            cell = UITableViewCell(style: .subtitle, reuseIdentifier: cellid)
+        }
+        switch indexPath.row {
+        case 0:
+            cell?.textLabel?.text = "wave style"
+            break
+        case 1:
+            cell?.textLabel?.text = "udnie style"
+            break
+        case 2:
+            cell?.textLabel?.text = "rain princess style"
+            break
+        case 3:
+            cell?.textLabel?.text = "la_muse style"
+            break
+        case 4:
+            cell?.textLabel?.text = "other style"
+            break
+        default:
+            break
+        }
+        
+//        cell?.detailTextLabel?.text = "这里是内容了油~"
+//        cell?.imageView?.image = UIImage(named:"Expense_success")
+        return cell!
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        if indexPath.row<4 {
+            self.styleButtonTouched(style: indexPath.row)
+        }
+        else{
+            self.imgView.image=self.imgTest
+        }
+        
     }
 }
 
